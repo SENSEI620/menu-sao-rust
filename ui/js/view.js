@@ -101,12 +101,12 @@ export function render({ pop = false } = {}) {
       const el = document.createElement('button');
       el.className = 'orb glass' + (pop ? ' pop' : '');
       el.dataset.l = '0';
-      el.innerHTML = '<span class="ico"></span><svg class="ring" viewBox="0 0 80 80" aria-hidden="true"></svg><i class="ping"></i><span class="tip"></span>';
+      el.innerHTML = '<span class="ico"></span><svg class="ring" viewBox="0 0 80 80" aria-hidden="true"></svg><span class="tip"></span>';
       if (pop) { el.style.setProperty('--d', n - 1 - i); once(el, 'pop'); }
       return el;
     },
     (el, o, i) => {
-      const [icon, ring, ping, tip] = el.children;
+      const [icon, ring, tip] = el.children;
       const label = o.kind === 'profile' ? o.p.name : o.d.label;
       el.dataset.i = i;
       el.setAttribute('aria-label', label);
@@ -114,7 +114,6 @@ export function render({ pop = false } = {}) {
       tip.textContent = label;
       el.classList.toggle('dock', o.kind === 'dock');
       const sel = S.pi === i;
-      if (sel && !el.classList.contains('sel')) replay(ping, 'go');
       el.classList.toggle('sel', sel);
       const html = o.kind === 'profile' ? ringHTML(o.p.blocks) : '';
       if (ring.dataset.sig !== html) { ring.dataset.sig = html; ring.innerHTML = html; }
@@ -223,15 +222,3 @@ export function tickCountdowns() {
   });
 }
 
-/** Partículas de luz do fundo (poucas e discretas). */
-export function makeMotes() {
-  const box = $('#motes');
-  if (box.childElementCount) return;
-  for (let i = 0; i < 16; i++) {
-    const m = document.createElement('i');
-    const s = 4 + Math.random() * 7;
-    m.style.cssText = `left:${Math.random() * 100}%;top:${30 + Math.random() * 65}%;width:${s}px;height:${s}px;` +
-      `--t:${7 + Math.random() * 7}s;--dl:${-Math.random() * 12}s;--dx:${(Math.random() - .5) * 60}px;--o:${.25 + Math.random() * .4}`;
-    box.appendChild(m);
-  }
-}

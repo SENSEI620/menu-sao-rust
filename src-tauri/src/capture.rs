@@ -1,14 +1,13 @@
-//! Foto da tela onde o mouse está, para o fundo desfocado do menu.
-//! (Janelas transparentes não conseguem desfocar a área de trabalho, então o
-//! programa tira uma foto antes de abrir e o menu desfoca essa foto.)
+//! Foto da tela onde o mouse está, para o fundo do menu.
 //!
-//! A foto é reduzida pela metade: o fundo fica desfocado de qualquer jeito,
-//! e assim ela chega à tela bem mais rápido.
+//! O fundo é sempre desfocado, então o Rust já entrega a foto PRONTA: reduzida a 1/4, levemente
+//! desfocada, mais escura e com cores mais vivas. Assim a tela não precisa aplicar nenhum filtro
+//! pesado sobre uma imagem do tamanho do monitor, e a foto trafega com ~20 KB em vez de centenas.
 
 use base64::engine::general_purpose::STANDARD;
 use base64::Engine;
 use image::codecs::jpeg::JpegEncoder;
-use image::imageops::{resize, FilterType};
+use image::imageops::{blur, resize, FilterType};
 use image::{DynamicImage, RgbaImage};
 
 pub struct Shot {
@@ -25,15 +24,23 @@ pub fn monitor_at(x: i32, y: i32) -> Result<Shot, String> {
     encode(rgba)
 }
 
-/// Reduz pela metade e codifica em JPEG (qualidade 70) como data URL.
+const BRIGHTNESS: f32 = 0.74;
+const SATURATION: f32 = 1.25;
+
+/// 1/4 do tamanho + desfoque leve + brilho/saturação, em JPEG como data URL.
 pub fn encode(rgba: RgbaImage) -> Result<Shot, String> {
     let (w, h) = (rgba.width(), rgba.height());
-    let small = resize(&rgba, (w / 2).max(1), (h / 2).max(1), FilterType::Triangle);
-    let rgb = DynamicImage::ImageRgba8(small).to_rgb8();
-    let mut buf = Vec::with_capacity(256 * 1024);
-    JpegEncoder::new_with_quality(&mut buf, 70)
-        .encode_image(&rgb)
-        .map_err(|e| e.to_string())?;
+    let small = resize(&rgba, (w / 4).max(1), (h / 4).max(1), FilterType::Triangle);
+    let soft = blur(&small, 1.6);
+    let mut rgb = DynamicImage::ImageRgba8(soft).to_rgb8();
+    for px in rgb.pixels_mut() {
+        let [r, g, b] = px.0.map(f32::from);
+        let l = 0.299 * r + 0.587 * g + 0.114 * b;
+        let adj = |c: f32| ((l + (c - l) * SATURATION) * BRIGHTNESS).clamp(0.0, 255.0) as u8;
+        px.0 = [adj(r), adj(g), adj(b)];
+    }
+    let mut buf = Vec::with_capacity(32 * 1024);
+    JpegEncoder::new_with_quality(&mut buf, 82).encode_image(&rgb).map_err(|e| e.to_string())?;
     Ok(Shot { data_url: format!("data:image/jpeg;base64,{}", STANDARD.encode(&buf)), width: w, height: h })
 }
 
@@ -42,14 +49,23 @@ mod tests {
     use super::*;
 
     #[test]
-    fn encodes_a_data_url_at_half_size() {
-        let img = RgbaImage::from_pixel(640, 360, image::Rgba([30, 80, 140, 255]));
+    fn data_url_is_a_quarter_size_and_small() {
+        let img = RgbaImage::from_pixel(1920, 1080, image::Rgba([30, 80, 140, 255]));
         let shot = encode(img).unwrap();
         assert!(shot.data_url.starts_with("data:image/jpeg;base64,"));
-        assert_eq!((shot.width, shot.height), (640, 360));
-        let b64 = shot.data_url.trim_start_matches("data:image/jpeg;base64,");
-        let bytes = STANDARD.decode(b64).unwrap();
+        assert_eq!((shot.width, shot.height), (1920, 1080));
+        assert!(shot.data_url.len() < 30_000, "foto grande demais: {}", shot.data_url.len());
+        let bytes = STANDARD.decode(shot.data_url.trim_start_matches("data:image/jpeg;base64,")).unwrap();
         let back = image::load_from_memory(&bytes).unwrap();
-        assert_eq!((back.width(), back.height()), (320, 180));
+        assert_eq!((back.width(), back.height()), (480, 270));
+    }
+
+    #[test]
+    fn darkens_and_keeps_colors_vivid() {
+        let img = RgbaImage::from_pixel(64, 64, image::Rgba([200, 100, 50, 255]));
+        let shot = encode(img).unwrap();
+        let bytes = STANDARD.decode(shot.data_url.trim_start_matches("data:image/jpeg;base64,")).unwrap();
+        let px = image::load_from_memory(&bytes).unwrap().to_rgb8().get_pixel(8, 8).0;
+        assert!(px[0] < 200 && px[0] > px[1] && px[1] > px[2], "{px:?}");
     }
 }

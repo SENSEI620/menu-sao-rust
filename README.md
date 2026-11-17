@@ -72,3 +72,9 @@ Testado no Linux: lógica em Rust (testes automáticos), programa completo rodan
 (atalho, captura de tela, abrir menu, navegar, salvar, comando de abrir) e a interface no Chromium.
 **Ainda não testado no Windows**: o gesto do mouse, a bandeja, o início automático e o som sem clique prévio
 (o programa usa uma opção do WebView2 para isso). A Opção B acima roda os testes da lógica no Windows de verdade.
+
+## Leveza (otimização)
+- Parado na bandeja o programa não tem tela nenhuma carregada: a janela só é criada quando você chama o menu e é liberada da memória depois de `freeAfterSecs` (padrão 60 s) sem uso. Para nunca liberar, ponha `"freeAfterSecs": 0` no `settings.json`.
+- Sem animações em repouso; só a animação de entrada (esferas, painéis, itens) e uma saída curta.
+- O fundo já vem pronto do Rust (1/4 do tamanho, desfocado e escurecido): a tela não aplica filtro pesado.
+- O gatilho do mouse descarta movimentos na primeira linha e some do caminho se desligado nos ajustes.

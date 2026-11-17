@@ -25,6 +25,7 @@ pub fn save_settings(app: AppHandle, state: State<'_, AppState>, settings: Value
         state.log.log(format!("erro ao salvar ajustes: {e}"));
     }
     *state.settings.write().unwrap() = s.clone();
+    crate::hook::set_enabled(s.mouse_gesture);
     shortcuts::apply(&app, &s);
     apply_autostart(&app, s.autostart);
 }
@@ -46,6 +47,12 @@ pub async fn import_firefox(state: State<'_, AppState>) -> Result<Value, String>
     let n = firefox::import(&mut cfg, &firefox::firefox_root(), &|m| state.log.log(m));
     state.store.save_config(&cfg).map_err(|e| e.to_string())?;
     Ok(json!({ "n": n, "config": cfg }))
+}
+
+/// A tela avisa que carregou; se há um menu esperando, a janela é mostrada e os dados voltam aqui.
+#[tauri::command]
+pub fn ui_ready(app: AppHandle) -> Option<Value> {
+    window::ui_ready(&app)
 }
 
 #[tauri::command]

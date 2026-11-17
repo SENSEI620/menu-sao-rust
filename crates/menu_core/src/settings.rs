@@ -18,6 +18,8 @@ pub struct Settings {
     pub firefox_no_remote: bool,
     /// iniciar com o Windows
     pub autostart: bool,
+    /// segundos parado até liberar a memória da tela (0 = nunca liberar)
+    pub free_after_secs: u64,
 }
 
 impl Default for Settings {
@@ -29,6 +31,7 @@ impl Default for Settings {
             volume: 100,
             firefox_no_remote: false,
             autostart: false,
+            free_after_secs: 60,
         }
     }
 }
@@ -51,6 +54,7 @@ impl Settings {
             volume: num("volume").filter(|n| n.is_finite()).map(|n| n.round().clamp(0.0, 100.0) as u8).unwrap_or(d.volume),
             firefox_no_remote: flag("firefoxNoRemote", d.firefox_no_remote),
             autostart: flag("autostart", d.autostart),
+            free_after_secs: num("freeAfterSecs").filter(|n| n.is_finite() && *n >= 0.0).map(|n| n.round() as u64).unwrap_or(d.free_after_secs).min(3600),
         }
     }
 }
@@ -71,6 +75,14 @@ mod tests {
         assert_eq!((s.hold_ms, s.volume), (5000, 100));
         let s = Settings::from_json(&json!({"holdMs": 10, "volume": -3}));
         assert_eq!((s.hold_ms, s.volume), (300, 0));
+    }
+
+    #[test]
+    fn free_after_secs_default_clamp_and_zero() {
+        assert_eq!(Settings::from_json(&json!({})).free_after_secs, 60);
+        assert_eq!(Settings::from_json(&json!({"freeAfterSecs": 0})).free_after_secs, 0);
+        assert_eq!(Settings::from_json(&json!({"freeAfterSecs": 99999})).free_after_secs, 3600);
+        assert_eq!(Settings::from_json(&json!({"freeAfterSecs": -5})).free_after_secs, 60);
     }
 
     #[test]

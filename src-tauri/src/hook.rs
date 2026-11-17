@@ -1,12 +1,31 @@
 //! Gatilho global do mouse: segurar Ctrl + botão esquerdo + botão direito pelo
 //! tempo configurado (padrão 1 s) abre o menu. Soltar qualquer um cancela.
+//!
+//! O Windows chama esta função a CADA movimento do mouse (centenas por segundo) e espera
+//! resposta rápida, senão o mouse engasga. Por isso tudo que não é botão/Ctrl sai na primeira linha,
+//! sem travar nada, e o gatilho desligado nos ajustes não custa nada.
 
 use crate::state::AppState;
 use crate::window;
 use rdev::{Button, EventType, Key};
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 use tauri::{AppHandle, Manager};
+
+static ENABLED: AtomicBool = AtomicBool::new(true);
+
+/// Liga/desliga o gesto (ajuste "Abrir segurando os botões").
+pub fn set_enabled(on: bool) {
+    ENABLED.store(on, Ordering::Relaxed);
+}
+
+#[derive(Clone, Copy)]
+enum Part {
+    Left,
+    Right,
+    Ctrl,
+}
 
 #[derive(Default)]
 struct Gesture {
@@ -23,6 +42,19 @@ impl Gesture {
     }
 }
 
+/// Só interessam botões do mouse e Ctrl; o resto (movimento, rolagem, outras teclas) é descartado.
+fn classify(ev: &EventType) -> Option<(Part, bool)> {
+    match ev {
+        EventType::ButtonPress(Button::Left) => Some((Part::Left, true)),
+        EventType::ButtonRelease(Button::Left) => Some((Part::Left, false)),
+        EventType::ButtonPress(Button::Right) => Some((Part::Right, true)),
+        EventType::ButtonRelease(Button::Right) => Some((Part::Right, false)),
+        EventType::KeyPress(Key::ControlLeft | Key::ControlRight) => Some((Part::Ctrl, true)),
+        EventType::KeyRelease(Key::ControlLeft | Key::ControlRight) => Some((Part::Ctrl, false)),
+        _ => None,
+    }
+}
+
 pub fn start(app: AppHandle) {
     std::thread::spawn(move || {
         let st = app.state::<AppState>();
@@ -30,20 +62,15 @@ pub fn start(app: AppHandle) {
         let gesture = Arc::new(Mutex::new(Gesture::default()));
         let app2 = app.clone();
         let result = rdev::listen(move |event| {
-            let was;
-            let now;
-            let my_gen;
+            let Some((part, down)) = classify(&event.event_type) else { return };
+            let (was, now, my_gen);
             {
                 let mut g = gesture.lock().unwrap();
                 was = g.complete();
-                match event.event_type {
-                    EventType::ButtonPress(Button::Left) => g.left = true,
-                    EventType::ButtonRelease(Button::Left) => g.left = false,
-                    EventType::ButtonPress(Button::Right) => g.right = true,
-                    EventType::ButtonRelease(Button::Right) => g.right = false,
-                    EventType::KeyPress(Key::ControlLeft | Key::ControlRight) => g.ctrl = true,
-                    EventType::KeyRelease(Key::ControlLeft | Key::ControlRight) => g.ctrl = false,
-                    _ => return,
+                match part {
+                    Part::Left => g.left = down,
+                    Part::Right => g.right = down,
+                    Part::Ctrl => g.ctrl = down,
                 }
                 now = g.complete();
                 if was != now {
@@ -52,24 +79,21 @@ pub fn start(app: AppHandle) {
                 my_gen = g.generation;
             }
             // só arma quando acabou de completar (o auto-repetir do Ctrl não reinicia a contagem)
-            if now && !was {
+            if now && !was && ENABLED.load(Ordering::Relaxed) {
                 arm(&app2, &gesture, my_gen);
             }
         });
         if let Err(e) = result {
             st.log.log(format!("FALHA no gatilho do mouse: {e:?}"));
-            window::notify(&app, format!("Gatilho do mouse indisponível. Use o atalho do teclado."));
+            window::notify(&app, "Gatilho do mouse indisponível. Use o atalho do teclado.");
         }
     });
 }
 
 fn arm(app: &AppHandle, gesture: &Arc<Mutex<Gesture>>, my_gen: u64) {
     let st = app.state::<AppState>();
-    let (enabled, hold) = {
-        let s = st.settings.read().unwrap();
-        (s.mouse_gesture, s.hold_ms)
-    };
-    if !enabled || window::is_visible(app) {
+    let hold = st.settings.read().unwrap().hold_ms;
+    if window::is_visible(app) {
         return;
     }
     st.log.log("gatilho armado");
@@ -101,5 +125,14 @@ mod tests {
         assert!(!g.complete());
         g.ctrl = true;
         assert!(g.complete());
+    }
+
+    #[test]
+    fn mouse_moves_and_other_keys_are_ignored_cheaply() {
+        assert!(classify(&EventType::MouseMove { x: 1.0, y: 2.0 }).is_none());
+        assert!(classify(&EventType::Wheel { delta_x: 0, delta_y: 1 }).is_none());
+        assert!(classify(&EventType::KeyPress(Key::KeyA)).is_none());
+        assert!(matches!(classify(&EventType::KeyPress(Key::ControlRight)), Some((Part::Ctrl, true))));
+        assert!(matches!(classify(&EventType::ButtonRelease(Button::Right)), Some((Part::Right, false))));
     }
 }

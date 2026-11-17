@@ -49,6 +49,7 @@ const mock = {
   hide: () => { const h = document.getElementById('home'); if (h) h.hidden = false; },
   launch: (p, url) => console.log('[prévia] abriria', p.br, p.pf, url),
   onShow: cb => { mockShow = cb; setTimeout(() => cb(sample()), 60); },
+  ready: () => {},
   onToast: () => {},
   reopen: () => mockShow && mockShow(sample()),
 };
@@ -60,6 +61,8 @@ const tauri = !isTauri ? null : {
   hide: () => T.core.invoke('hide_menu'),
   launch: (p, url) => T.core.invoke('launch', { br: p.br, pf: p.pf, url }),
   onShow: cb => T.event.listen('menu:show', e => cb(e.payload)),
+  /** Avisa o Rust que a tela carregou; se ele estava esperando para abrir o menu, devolve os dados. */
+  ready: async cb => { const d = await T.core.invoke('ui_ready'); if (d) cb(d); },
   onToast: cb => T.event.listen('toast', e => cb(e.payload)),
 };
 

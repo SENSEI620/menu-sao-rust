@@ -14,7 +14,7 @@ use menu_core::log::Logger;
 use menu_core::store::{Loaded, Store};
 use menu_core::{first_run_config, firefox};
 use state::AppState;
-use std::sync::atomic::AtomicBool;
+use std::sync::atomic::{AtomicBool, AtomicU64};
 use std::sync::{Mutex, RwLock};
 use std::time::{Duration, Instant};
 use tauri::{Manager, RunEvent, WindowEvent};
@@ -36,6 +36,7 @@ fn main() {
             commands::save_settings,
             commands::import_firefox,
             commands::hide_menu,
+            commands::ui_ready,
             commands::launch,
         ])
         .setup(|app| {
@@ -64,11 +65,15 @@ fn main() {
                 settings: RwLock::new(settings.clone()),
                 shown_at: Mutex::new(Instant::now()),
                 opening: AtomicBool::new(false),
+                js_ready: AtomicBool::new(false),
+                pending: Mutex::new(None),
+                hide_gen: AtomicU64::new(0),
             });
 
             tray::setup(&handle)?;
             shortcuts::apply(&handle, &settings);
             commands::apply_autostart(&handle, settings.autostart);
+            hook::set_enabled(settings.mouse_gesture);
             hook::start(handle);
             Ok(())
         })
@@ -81,13 +86,13 @@ fn main() {
                     .map(|s| s.shown_at.lock().unwrap().elapsed() < Duration::from_millis(700))
                     .unwrap_or(true);
                 if !recent && window.is_visible().unwrap_or(false) {
-                    let _ = window.hide();
+                    window::hide(window.app_handle());
                 }
             }
             // o programa continua na bandeja: "fechar" só esconde
             WindowEvent::CloseRequested { api, .. } => {
                 api.prevent_close();
-                let _ = window.hide();
+                window::hide(window.app_handle());
             }
             _ => {}
         })

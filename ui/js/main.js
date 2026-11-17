@@ -1,8 +1,8 @@
 // Ponto de entrada: abrir/fechar o menu, navegação por teclado/roda/mouse e cronômetros.
 import { api, isTauri } from './bridge.js';
 import { S, $, clamp, save, isOut, menuIsOpen, modalIsOpen } from './state.js';
-import { loadSounds, play, wake } from './audio.js';
-import { render, resetView, orbs, curP, curB, actionsFor, tickCountdowns, makeMotes } from './view.js';
+import { loadSounds, play, wake, sleep } from './audio.js';
+import { render, resetView, orbs, curP, curB, actionsFor, tickCountdowns } from './view.js';
 import { ask, closeModal, editBlock, initDialogs, toast } from './dialogs.js';
 import { emit } from './registry.js';
 import { initGlass } from './glass.js';
@@ -61,13 +61,13 @@ function openMenu() {
   wake();
   S.pi = S.bi = S.ai = -1; S.lv = 0;
   resetView();
-  makeMotes();
   $('#home').hidden = true;
   render({ pop: true });
   $('#menu').className = 'on' + ($('#menu').dataset.bg ? '' : ' nobg');
   S.openedAt = performance.now();
   play('enter');
   emit('open');
+  startClock();
   // depois que o último ícone nasce, o primeiro perfil fica dourado sozinho
   clearTimeout(autoSelect);
   autoSelect = setTimeout(() => {
@@ -84,7 +84,8 @@ function closeMenu() {
   play('exit');
   emit('close');
   $('#menu').classList.add('closing');
-  setTimeout(() => { $('#menu').className = ''; S.busy = false; api.hide(); }, 45 * orbs().length + 420);
+  setTimeout(() => { $('#menu').className = ''; S.busy = false; stopClock(); api.hide(); }, 230);
+  setTimeout(sleep, 1500);
 }
 
 // ───────── Teclado e roda ─────────
@@ -167,31 +168,28 @@ ctxMenu.addEventListener('click', async e => {
 });
 
 // ───────── Cronômetros (só enquanto o menu está aberto) ─────────
-setInterval(() => {
+let clock = 0;
+const startClock = () => { if (!clock) clock = setInterval(tick, 1000); };
+const stopClock = () => { clearInterval(clock); clock = 0; };
+function tick() {
   if (!menuIsOpen()) return;
   let freed = false;
   S.P.forEach(p => p.blocks.forEach(b => { if (b.until && b.until <= Date.now()) { b.until = 0; freed = true; } }));
   if (freed) { play('confirm'); save(); render(); return; }
   tickCountdowns();
-}, 1000);
+}
 
 // ───────── Início ─────────
 initDialogs();
 initGlass();
 loadSounds();
-// o fundo desliza de leve com o mouse (parallax)
-$('#menu').addEventListener('pointermove', e => {
-  const m = $('#menu');
-  m.style.setProperty('--px', ((e.clientX / innerWidth - .5) * -14).toFixed(1) + 'px');
-  m.style.setProperty('--py', ((e.clientY / innerHeight - .5) * -14).toFixed(1) + 'px');
-}, { passive: true });
 if (!isTauri) {
   document.body.classList.add('mock');
   $('#home').hidden = false;
   $('#homeOpen').onclick = () => api.reopen();
 }
 api.onToast(msg => toast(msg));
-api.onShow(d => {
+const showMenu = d => {
   $('#menu').className = '';
   S.busy = false;
   hideCtx();
@@ -208,4 +206,6 @@ api.onShow(d => {
     delete menu.dataset.bg;
     openMenu();
   }
-});
+};
+// primeiro "ouvir", depois avisar que está pronto (a janela só é criada quando o menu é chamado)
+Promise.resolve(api.onShow(showMenu)).then(() => api.ready(showMenu));

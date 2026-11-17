@@ -1,7 +1,8 @@
 use menu_core::log::Logger;
 use menu_core::settings::Settings;
 use menu_core::store::Store;
-use std::sync::atomic::AtomicBool;
+use serde_json::Value;
+use std::sync::atomic::{AtomicBool, AtomicU64};
 use std::sync::{Mutex, RwLock};
 use std::time::Instant;
 
@@ -14,4 +15,10 @@ pub struct AppState {
     pub shown_at: Mutex<Instant>,
     /// evita abrir o menu duas vezes ao mesmo tempo
     pub opening: AtomicBool,
+    /// a tela já carregou e está ouvindo os eventos
+    pub js_ready: AtomicBool,
+    /// dados do menu esperando a tela terminar de carregar (janela recém-criada)
+    pub pending: Mutex<Option<Value>>,
+    /// muda a cada abrir/fechar; o temporizador de "liberar memória" só vale se não mudou
+    pub hide_gen: AtomicU64,
 }

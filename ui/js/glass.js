@@ -80,10 +80,6 @@ export function initGlass() {
   root.classList.toggle('lg', on);
 
   if (on) {
-    // esferas: todas do mesmo tamanho, um filtro só
-    const defs = document.getElementById('lg-defs');
-    defs.appendChild(filterNode('lg-orb', 62, 62, lensMap(62, 62, 31, 17), 30));
-
     const pending = new Map();
     const ro = new ResizeObserver(entries => {
       for (const e of entries) pending.set(e.target, e.target._lg);
@@ -97,13 +93,17 @@ export function initGlass() {
   }
 
   // reflexo e brilho de borda acompanham o mouse
-  addEventListener('pointermove', e => {
-    const g = e.target.closest && e.target.closest('.glass');
+  // (no máximo uma atualização por quadro, só nos painéis grandes)
+  let ev = null, raf = 0;
+  const apply = () => {
+    raf = 0;
+    const g = ev.target.closest && ev.target.closest('.panel, #mb');
     if (!g) return;
     const b = g.getBoundingClientRect();
-    const x = e.clientX - b.left, y = e.clientY - b.top;
+    const x = ev.clientX - b.left, y = ev.clientY - b.top;
     g.style.setProperty('--mx', x + 'px');
     g.style.setProperty('--my', y + 'px');
     g.style.setProperty('--ang', Math.round(Math.atan2(y - b.height / 2, x - b.width / 2) * 180 / Math.PI + 90) + 'deg');
-  }, { passive: true });
+  };
+  addEventListener('pointermove', e => { ev = e; if (!raf) raf = requestAnimationFrame(apply); }, { passive: true });
 }

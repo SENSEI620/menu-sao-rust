@@ -11,6 +11,7 @@
     "windows": [
       {
         "label": "main",
+        "create": false,
         "title": "Menu SAO",
         "visible": false,
         "decorations": false,

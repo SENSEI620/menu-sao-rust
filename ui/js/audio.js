@@ -35,3 +35,5 @@ export function play(k, v = 1) {
 }
 
 export const wake = ac;
+/** Menu fechado: o áudio dorme (não gasta nada até a próxima abertura). */
+export function sleep() { if (ctx && ctx.state === 'running') ctx.suspend().catch(() => {}); }
