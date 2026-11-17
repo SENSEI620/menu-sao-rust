@@ -24,14 +24,9 @@
 :root { --lens: blur(0px); }
 .glass { position: relative; backdrop-filter: blur(18px) saturate(1.8); }
 html.lg .glass { backdrop-filter: var(--lens) blur(2.5px) saturate(1.75) brightness(1.07); }
-.glass::before { /* reflexo que segue o mouse */
-  content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; opacity: 0; transition: opacity .3s;
-  background: radial-gradient(190px circle at var(--mx, 30%) var(--my, 0%), rgba(255, 255, 255, .24), rgba(255, 255, 255, 0) 62%);
-}
-.glass:hover::before { opacity: 1; }
 .glass::after { /* brilho de borda: luz de um lado, sombra do outro, gira conforme o mouse */
   content: ""; position: absolute; inset: 0; border-radius: inherit; padding: 1.3px; pointer-events: none;
-  background: conic-gradient(from var(--ang, 135deg), rgba(255, 255, 255, .95), rgba(255, 255, 255, .06) 22%, rgba(255, 255, 255, .5) 46%, rgba(255, 255, 255, .05) 66%, rgba(255, 255, 255, .85) 86%, rgba(255, 255, 255, .95));
+  background: conic-gradient(from 135deg, rgba(255, 255, 255, .95), rgba(255, 255, 255, .06) 22%, rgba(255, 255, 255, .5) 46%, rgba(255, 255, 255, .05) 66%, rgba(255, 255, 255, .85) 86%, rgba(255, 255, 255, .95));
   -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
   -webkit-mask-composite: xor; mask-composite: exclude;
 }

@@ -41,6 +41,4 @@ body.mock {
 .openbtn { border: 1px solid var(--line); background: rgba(255, 255, 255, .1); padding: 10px 22px; border-radius: 999px; transition: background .15s, transform .15s; }
 .openbtn:hover { background: rgba(255, 255, 255, .2); transform: translateY(-1px); }
 
-@media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after { animation: none !important; transition: none !important; }
-}
+/* (de propósito NÃO desligamos as animações por "reduzir movimento" do Windows: a entrada é parte do visual) */

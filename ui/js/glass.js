@@ -91,19 +91,4 @@ export function initGlass() {
       ro.observe(el);
     }
   }
-
-  // reflexo e brilho de borda acompanham o mouse
-  // (no máximo uma atualização por quadro, só nos painéis grandes)
-  let ev = null, raf = 0;
-  const apply = () => {
-    raf = 0;
-    const g = ev.target.closest && ev.target.closest('.panel, #mb');
-    if (!g) return;
-    const b = g.getBoundingClientRect();
-    const x = ev.clientX - b.left, y = ev.clientY - b.top;
-    g.style.setProperty('--mx', x + 'px');
-    g.style.setProperty('--my', y + 'px');
-    g.style.setProperty('--ang', Math.round(Math.atan2(y - b.height / 2, x - b.width / 2) * 180 / Math.PI + 90) + 'deg');
-  };
-  addEventListener('pointermove', e => { ev = e; if (!raf) raf = requestAnimationFrame(apply); }, { passive: true });
 }
