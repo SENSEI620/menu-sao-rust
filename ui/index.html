@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Menu SAO</title>
+<link rel="stylesheet" href="css/base.css">
+<link rel="stylesheet" href="css/menu.css">
+<link rel="stylesheet" href="css/dialogs.css">
+</head>
+<body>
+<svg id="lg-defs" width="0" height="0" style="position:absolute" aria-hidden="true"></svg>
+<!-- Só aparece fora do programa (abrindo este arquivo no navegador para ver o visual) -->
+<div id="home" hidden>
+  <h1>Menu SAO — pré-visualização</h1>
+  <p>Você está vendo a interface fora do programa, com dados de exemplo. No programa de verdade o menu abre por cima de qualquer janela.</p>
+  <button class="openbtn" id="homeOpen">Abrir o menu</button>
+</div>
+
+<div id="menu">
+  <div id="bg"></div>
+  <div id="bloom"></div>
+  <div id="motes" aria-hidden="true"></div>
+  <div id="stage">
+    <div id="c1" role="menu"></div>
+    <div class="panel glass" id="c2"><i class="selbar"></i><div class="list"></div></div>
+    <div class="panel glass" id="c3"><i class="selbar"></i><div class="list"></div></div>
+  </div>
+</div>
+<div id="ctx"></div>
+<div id="modal"><div id="mb" class="glass"></div></div>
+<div id="toast" role="status"></div>
+
+<script type="module" src="js/main.js"></script>
+</body>
+</html>

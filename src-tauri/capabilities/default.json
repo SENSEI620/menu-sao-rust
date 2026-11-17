@@ -1,0 +1,7 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "A tela do menu só conversa com o programa pelos comandos próprios (salvar, abrir link, importar...).",
+  "windows": ["main"],
+  "permissions": ["core:default"]
+}

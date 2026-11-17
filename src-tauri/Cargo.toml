@@ -1,0 +1,24 @@
+[package]
+name = "menu-sao"
+version = "0.2.0"
+edition = "2021"
+description = "Menu SAO em Rust (Tauri): menu flutuante para abrir links no perfil certo do Firefox/Brave"
+build = "build.rs"
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+base64 = "0.22"
+image = { version = "0.25", default-features = false, features = ["jpeg"] }
+menu_core = { path = "../crates/menu_core" }
+opener = "0.9.0"
+rdev = "0.5.3"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tauri = { version = "2", features = ["tray-icon"] }
+tauri-plugin-autostart = "2"
+tauri-plugin-global-shortcut = "2"
+tauri-plugin-notification = "2"
+tauri-plugin-single-instance = "2"
+xcap = "0.9.10"
